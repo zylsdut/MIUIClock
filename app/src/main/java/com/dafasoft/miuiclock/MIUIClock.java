@@ -1,6 +1,8 @@
 package com.dafasoft.miuiclock;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -26,8 +28,10 @@ public class MIUIClock extends View {
     private Point mCenterPoint;
     private Calendar mCalendar;
     private ValueAnimator mClockAnimator;
+    private ValueAnimator mSecondAnimator;
     private float mStartAngle;
     private float mClockAngle;
+    private int mSecondAngle;
     private static final int GRADUATION_LENGTH = 50;
     private static final int GRADUATION_COUNT = 180;
     private static final int ROUND_ANGLE = 360;
@@ -70,20 +74,23 @@ public class MIUIClock extends View {
         super.onDraw(canvas);
         int layerCount = canvas.saveLayer(0 , 0 , canvas.getWidth() , canvas.getHeight() , mDefaultPaint , Canvas.ALL_SAVE_FLAG);
         canvas.rotate(mClockAngle , mCenterPoint.x , mCenterPoint.y);
-
         Path path = new Path();
         path.moveTo(mGraduationPoint.x , mGraduationPoint.y + 70);// 此点为多边形的起点
         path.lineTo(mGraduationPoint.x - 20, mGraduationPoint.y + 97);
         path.lineTo(mGraduationPoint.x + 20, mGraduationPoint.y + 97);
         path.close(); // 使这些点构成封闭的多边形
         canvas.drawPath(path, mPaint);
-        for (int i= 0 ; i < GRADUATION_COUNT ; i ++) {
+        canvas.restoreToCount(layerCount);
+
+        layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
+        canvas.rotate(mSecondAngle, mCenterPoint.x, mCenterPoint.y);
+        for (int i = 0; i < GRADUATION_COUNT; i++) {
             int alpha = 255 - i * 3;
             if (alpha > 120) {
                 mGraduationPaint.setAlpha(alpha);
             }
-            canvas.drawLine(mGraduationPoint.x , mGraduationPoint.y + 5 , mGraduationPoint.x , mGraduationPoint.y + GRADUATION_LENGTH , mGraduationPaint);
-            canvas.rotate(- PER_GRADUATION_ANGLE , mCenterPoint.x , mCenterPoint.y);
+            canvas.drawLine(mGraduationPoint.x, mGraduationPoint.y + 5, mGraduationPoint.x, mGraduationPoint.y + GRADUATION_LENGTH, mGraduationPaint);
+            canvas.rotate(-PER_GRADUATION_ANGLE, mCenterPoint.x, mCenterPoint.y);
         }
         canvas.restoreToCount(layerCount);
     }
@@ -105,38 +112,32 @@ public class MIUIClock extends View {
     }
 
     public void startAnimation() {
-        mClockAnimator = ValueAnimator.ofInt(0 , GRADUATION_COUNT);
+        mClockAnimator = ValueAnimator.ofFloat(0 , GRADUATION_COUNT);
         mClockAnimator.setDuration(Constants.MINUTE);
         mClockAnimator.setInterpolator(new LinearInterpolator());
         mClockAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator valueAnimator) {
-                mClockAngle = (int)valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
+                mClockAngle = (float) valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
                 invalidate();
             }
         });
-       /* mClockAnimator.addListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animator) {
-                mStartAngle = (mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / Constants.SECOND) * PER_GRADUATION_ANGLE;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animator) {
-
-            }
-
-            @Override
-            public void onAnimationCancel(Animator animator) {
-
-            }
-
-            @Override
-            public void onAnimationRepeat(Animator animator) {
-
-            }
-        });*/
         mClockAnimator.setRepeatMode(ValueAnimator.REVERSE);
+
+        mSecondAnimator = ValueAnimator.ofInt(0 , GRADUATION_COUNT);
+        mSecondAnimator.setDuration(Constants.MINUTE);
+        mSecondAnimator.setInterpolator(new LinearInterpolator());
+        mSecondAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+
+                mSecondAngle = (int) valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
+                invalidate();
+            }
+        });
+        mSecondAnimator.setRepeatMode(ValueAnimator.REVERSE);
+
+        mSecondAnimator.start();
         mClockAnimator.start();
     }
 }
