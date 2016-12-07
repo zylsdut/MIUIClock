@@ -122,7 +122,7 @@ public class MIUIClock extends View {
                 invalidate();
             }
         });
-        mClockAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        mClockAnimator.setRepeatCount(ValueAnimator.INFINITE);
 
         mSecondAnimator = ValueAnimator.ofInt(0 , GRADUATION_COUNT);
         mSecondAnimator.setDuration(Constants.MINUTE);
@@ -135,7 +135,7 @@ public class MIUIClock extends View {
                 invalidate();
             }
         });
-        mSecondAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        mSecondAnimator.setRepeatCount(ValueAnimator.INFINITE);
 
         mSecondAnimator.start();
         mClockAnimator.start();
