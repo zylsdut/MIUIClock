@@ -27,6 +27,7 @@ public class MIUIClock extends View {
     private Paint mDefaultPaint;
     private Paint mGraduationPaint;
     private Rect mContentRect;
+    private Path mTriangle;
     private Point mGraduationPoint;
     private Point mCenterPoint;
     private Rect mDstCircleRect; //时钟中心圆圈所在位置
@@ -44,9 +45,9 @@ public class MIUIClock extends View {
     private static final int GRADUATION_COUNT = 180; //一圈圆环刻度的数量
     private static final int ROUND_ANGLE = 360; //圆一周的角度
     private static final int PER_GRADUATION_ANGLE = ROUND_ANGLE / GRADUATION_COUNT; //每个刻度的角度
-    private Bitmap mCircleBitmap;
-    private Bitmap mHourBitmap;
-    private Bitmap mMinuteBitmap;
+    private Bitmap mCircleBitmap; //时钟中心的圆圈
+    private Bitmap mHourBitmap; //时针
+    private Bitmap mMinuteBitmap; //分针
 
     public MIUIClock(Context context) {
         super(context);
@@ -83,6 +84,13 @@ public class MIUIClock extends View {
         mContentRect = new Rect(0 , 0 , w, h);
         mGraduationPoint = new Point(w /2 , 0);
         mCenterPoint = new Point(w /2 , h /2);
+        //初始化三角
+        mTriangle = new Path();
+        mTriangle.moveTo(mGraduationPoint.x , mGraduationPoint.y + 70);// 此点为多边形的起点
+        mTriangle.lineTo(mGraduationPoint.x - 20, mGraduationPoint.y + 97);
+        mTriangle.lineTo(mGraduationPoint.x + 20, mGraduationPoint.y + 97);
+        mTriangle.close(); // 使这些点构成封闭的多边形
+
         //初始化circle所在位置
         int circleWidth = mCircleBitmap.getWidth();
         int circleHeight = mCircleBitmap.getHeight();
@@ -107,25 +115,27 @@ public class MIUIClock extends View {
         super.onDraw(canvas);
         int layerCount = canvas.saveLayer(0 , 0 , canvas.getWidth() , canvas.getHeight() , mDefaultPaint , Canvas.ALL_SAVE_FLAG);
         canvas.rotate(mClockAngle + mSecondStartAngle , mCenterPoint.x , mCenterPoint.y);
-        Path path = new Path();
-        path.moveTo(mGraduationPoint.x , mGraduationPoint.y + 70);// 此点为多边形的起点
-        path.lineTo(mGraduationPoint.x - 20, mGraduationPoint.y + 97);
-        path.lineTo(mGraduationPoint.x + 20, mGraduationPoint.y + 97);
-        path.close(); // 使这些点构成封闭的多边形
-        canvas.drawPath(path, mPaint);
+
+        //画三角
+        canvas.drawPath(mTriangle, mPaint);
+
+        //画圆圈
         canvas.drawBitmap(mCircleBitmap , null , mDstCircleRect , mDefaultPaint);
         canvas.restoreToCount(layerCount);
 
-        layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
+        //画时针
+        layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG); //新建图层
         canvas.rotate(mHourAngle , mCenterPoint.x , mCenterPoint.y);
         canvas.drawBitmap(mHourBitmap , null , mDstHourRect , mDefaultPaint);
-        canvas.restoreToCount(layerCount);
+        canvas.restoreToCount(layerCount);//将图层恢复到屏幕上
 
+        //画分针
         layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
         canvas.rotate(mMinuteAngle , mCenterPoint.x , mCenterPoint.y);
         canvas.drawBitmap(mMinuteBitmap , null , mDstMinuteRect , mDefaultPaint);
         canvas.restoreToCount(layerCount);
 
+        //画刻度
         layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
         canvas.rotate(mSecondAngle + mSecondStartAngle , mCenterPoint.x, mCenterPoint.y);
         for (int i = 0; i < GRADUATION_COUNT; i++) {
