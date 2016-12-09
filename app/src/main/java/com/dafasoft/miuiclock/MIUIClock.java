@@ -11,6 +11,7 @@ import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 import java.util.Calendar;
@@ -22,34 +23,44 @@ import java.util.Calendar;
 public class MIUIClock extends View {
 
     private Paint mPaint;
+    private Context mContext;
     private Paint mDefaultPaint;
     private Paint mGraduationPaint;
     private Rect mContentRect;
     private Point mGraduationPoint;
     private Point mCenterPoint;
+    private Rect mDstCircleRect; //时钟中心圆圈所在位置
+    private Rect mDstHourRect; //时针所在位置
+    private Rect mDstMinuteRect; //分针所在位置
     private Calendar mCalendar;
     private ValueAnimator mClockAnimator;
     private ValueAnimator mSecondAnimator;
     private float mSecondStartAngle; //圆环的起始角度
     private float mClockAngle; //三角指针角度
     private int mSecondAngle; //圆环角度
+    private float mHourAngle; //时针角度
+    private float mMinuteAngle; //分针角度
     private static final int GRADUATION_LENGTH = 50; //圆环刻度长度
     private static final int GRADUATION_COUNT = 180; //一圈圆环刻度的数量
     private static final int ROUND_ANGLE = 360; //圆一周的角度
     private static final int PER_GRADUATION_ANGLE = ROUND_ANGLE / GRADUATION_COUNT; //每个刻度的角度
+    private Bitmap mCircleBitmap;
+    private Bitmap mHourBitmap;
+    private Bitmap mMinuteBitmap;
 
     public MIUIClock(Context context) {
         super(context);
-        init();
+        init(context);
     }
 
     public MIUIClock(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init();
+        init(context);
     }
 
-    private void init() {
-        mDefaultPaint = new Paint();
+    private void init(Context context) {
+        mContext = context;
+        mDefaultPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint.setColor(Color.WHITE);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
@@ -60,6 +71,10 @@ public class MIUIClock extends View {
         mGraduationPaint.setStrokeWidth(4);
         mGraduationPaint.setStrokeCap(Paint.Cap.ROUND);
         mCalendar = Calendar.getInstance();
+
+        mCircleBitmap = BitmapFactory.decodeResource(mContext.getResources() , R.mipmap.ic_circle);
+        mHourBitmap = BitmapFactory.decodeResource(mContext.getResources() , R.mipmap.ic_hour);
+        mMinuteBitmap = BitmapFactory.decodeResource(mContext.getResources() , R.mipmap.ic_minute);
     }
 
     @Override
@@ -68,6 +83,23 @@ public class MIUIClock extends View {
         mContentRect = new Rect(0 , 0 , w, h);
         mGraduationPoint = new Point(w /2 , 0);
         mCenterPoint = new Point(w /2 , h /2);
+        //初始化circle所在位置
+        int circleWidth = mCircleBitmap.getWidth();
+        int circleHeight = mCircleBitmap.getHeight();
+        mDstCircleRect = new Rect(mCenterPoint.x - circleWidth /2 , mCenterPoint.y - circleHeight/2 ,
+                mCenterPoint.x + circleWidth /2 , mCenterPoint.y  + circleHeight /2);
+
+        //初始化时针所在位置
+        int hourWidth = mHourBitmap.getWidth();
+        int hourHeight = mHourBitmap.getHeight();
+        mDstHourRect = new Rect(mCenterPoint.x - hourWidth / 2 , mCenterPoint.y - hourHeight - 20 ,
+                mCenterPoint.x + hourWidth / 2 , mCenterPoint.y - 20);
+
+        //初始化分针所在位置
+        int minuteWidth = mMinuteBitmap.getWidth();
+        int minuteHeight = mMinuteBitmap.getHeight();
+        mDstMinuteRect = new Rect(mCenterPoint.x - minuteWidth / 2 , mCenterPoint.y - minuteHeight - 20 ,
+                mCenterPoint.x + minuteWidth / 2 , mCenterPoint.y - 20);
     }
 
     @Override
@@ -81,6 +113,17 @@ public class MIUIClock extends View {
         path.lineTo(mGraduationPoint.x + 20, mGraduationPoint.y + 97);
         path.close(); // 使这些点构成封闭的多边形
         canvas.drawPath(path, mPaint);
+        canvas.drawBitmap(mCircleBitmap , null , mDstCircleRect , mDefaultPaint);
+        canvas.restoreToCount(layerCount);
+
+        layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
+        canvas.rotate(mHourAngle , mCenterPoint.x , mCenterPoint.y);
+        canvas.drawBitmap(mHourBitmap , null , mDstHourRect , mDefaultPaint);
+        canvas.restoreToCount(layerCount);
+
+        layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
+        canvas.rotate(mMinuteAngle , mCenterPoint.x , mCenterPoint.y);
+        canvas.drawBitmap(mMinuteBitmap , null , mDstMinuteRect , mDefaultPaint);
         canvas.restoreToCount(layerCount);
 
         layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
@@ -103,6 +146,7 @@ public class MIUIClock extends View {
     }
 
     public void startAnimation() {
+        //三角刻度动画
         mClockAnimator = ValueAnimator.ofFloat(0 , GRADUATION_COUNT);
         mClockAnimator.setDuration(Constants.MINUTE);
         mClockAnimator.setInterpolator(new LinearInterpolator());
@@ -114,6 +158,7 @@ public class MIUIClock extends View {
         });
         mClockAnimator.setRepeatCount(ValueAnimator.INFINITE);
 
+        //圆圈刻度动画
         mSecondAnimator = ValueAnimator.ofInt(0 , GRADUATION_COUNT);
         mSecondAnimator.setDuration(Constants.MINUTE);
         mSecondAnimator.setInterpolator(new LinearInterpolator());
@@ -121,13 +166,17 @@ public class MIUIClock extends View {
             @Override
             public void onAnimationUpdate(ValueAnimator valueAnimator) {
                 mSecondAngle = (int) valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
+                mHourAngle = (mCalendar.get(Calendar.HOUR) + ((float)mCalendar.get(Calendar.MINUTE)) / 60) * (360 / 12);
+                mMinuteAngle = (mCalendar.get(Calendar.MINUTE) + ((float)mCalendar.get(Calendar.SECOND)) / 60) * (360 / 60);
                 invalidate();
             }
         });
         mSecondAnimator.addListener(new Animator.AnimatorListener() {
             @Override
             public void onAnimationStart(Animator animator) {
-                mSecondStartAngle = Math.round((mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / Constants.SECOND) * PER_GRADUATION_ANGLE);
+                mSecondStartAngle = Math.round((mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / Constants.SECOND) * (360 / 60));
+                mHourAngle = (mCalendar.get(Calendar.HOUR) + ((float)mCalendar.get(Calendar.MINUTE)) / 60) * (360 / 12);
+                mMinuteAngle = (mCalendar.get(Calendar.MINUTE) + ((float)mCalendar.get(Calendar.SECOND)) / 60) * (360 / 60);
             }
 
             @Override
