@@ -13,6 +13,18 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mMIUIClock = (MIUIClock) findViewById(R.id.miui_clock);
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         mMIUIClock.startAnimation();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mMIUIClock.cancelAnimation();
     }
 }

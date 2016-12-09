@@ -1,4 +1,5 @@
 package com.dafasoft.miuiclock;
+import android.animation.Animator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -29,13 +30,13 @@ public class MIUIClock extends View {
     private Calendar mCalendar;
     private ValueAnimator mClockAnimator;
     private ValueAnimator mSecondAnimator;
-    private float mStartAngle;
-    private float mClockAngle;
-    private int mSecondAngle;
-    private static final int GRADUATION_LENGTH = 50;
-    private static final int GRADUATION_COUNT = 180;
-    private static final int ROUND_ANGLE = 360;
-    private static final int PER_GRADUATION_ANGLE = ROUND_ANGLE / GRADUATION_COUNT;
+    private float mSecondStartAngle; //圆环的起始角度
+    private float mClockAngle; //三角指针角度
+    private int mSecondAngle; //圆环角度
+    private static final int GRADUATION_LENGTH = 50; //圆环刻度长度
+    private static final int GRADUATION_COUNT = 180; //一圈圆环刻度的数量
+    private static final int ROUND_ANGLE = 360; //圆一周的角度
+    private static final int PER_GRADUATION_ANGLE = ROUND_ANGLE / GRADUATION_COUNT; //每个刻度的角度
 
     public MIUIClock(Context context) {
         super(context);
@@ -73,7 +74,7 @@ public class MIUIClock extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         int layerCount = canvas.saveLayer(0 , 0 , canvas.getWidth() , canvas.getHeight() , mDefaultPaint , Canvas.ALL_SAVE_FLAG);
-        canvas.rotate(mClockAngle , mCenterPoint.x , mCenterPoint.y);
+        canvas.rotate(mClockAngle + mSecondStartAngle , mCenterPoint.x , mCenterPoint.y);
         Path path = new Path();
         path.moveTo(mGraduationPoint.x , mGraduationPoint.y + 70);// 此点为多边形的起点
         path.lineTo(mGraduationPoint.x - 20, mGraduationPoint.y + 97);
@@ -83,7 +84,7 @@ public class MIUIClock extends View {
         canvas.restoreToCount(layerCount);
 
         layerCount = canvas.saveLayer(0, 0, canvas.getWidth(), canvas.getHeight(), mDefaultPaint, Canvas.ALL_SAVE_FLAG);
-        canvas.rotate(mSecondAngle, mCenterPoint.x, mCenterPoint.y);
+        canvas.rotate(mSecondAngle + mSecondStartAngle , mCenterPoint.x, mCenterPoint.y);
         for (int i = 0; i < GRADUATION_COUNT; i++) {
             int alpha = 255 - i * 3;
             if (alpha > 120) {
@@ -98,16 +99,6 @@ public class MIUIClock extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-/*        int width = mMaskBitmap.getWidth();
-        int height = mMaskBitmap.getHeight();
-        int widthSpecMode = MeasureSpec.getMode(widthMeasureSpec);
-        int heightSpecMode = MeasureSpec.getMode(heightMeasureSpec);
-        if (widthSpecMode != MeasureSpec.EXACTLY) {
-            widthMeasureSpec = MeasureSpec.makeMeasureSpec(width , MeasureSpec.EXACTLY);
-        }
-        if (heightSpecMode != MeasureSpec.EXACTLY) {
-            heightMeasureSpec = MeasureSpec.makeMeasureSpec(height , MeasureSpec.EXACTLY);
-        }*/
         setMeasuredDimension(widthMeasureSpec , heightMeasureSpec);
     }
 
@@ -119,7 +110,6 @@ public class MIUIClock extends View {
             @Override
             public void onAnimationUpdate(ValueAnimator valueAnimator) {
                 mClockAngle = (float) valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
-                invalidate();
             }
         });
         mClockAnimator.setRepeatCount(ValueAnimator.INFINITE);
@@ -130,14 +120,43 @@ public class MIUIClock extends View {
         mSecondAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator valueAnimator) {
-
                 mSecondAngle = (int) valueAnimator.getAnimatedValue() * PER_GRADUATION_ANGLE;
                 invalidate();
+            }
+        });
+        mSecondAnimator.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animator) {
+                mSecondStartAngle = Math.round((mCalendar.get(Calendar.SECOND) + mCalendar.get(Calendar.MILLISECOND) / Constants.SECOND) * PER_GRADUATION_ANGLE);
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animator) {
+
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animator) {
+
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animator) {
+
             }
         });
         mSecondAnimator.setRepeatCount(ValueAnimator.INFINITE);
 
         mSecondAnimator.start();
         mClockAnimator.start();
+    }
+
+    public void cancelAnimation() {
+        if (mClockAnimator != null) {
+            mClockAnimator.removeAllUpdateListeners();
+            mClockAnimator.removeAllListeners();
+            mClockAnimator.cancel();
+            mClockAnimator = null;
+        }
     }
 }
